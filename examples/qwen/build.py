@@ -326,6 +326,17 @@ def parse_arguments():
                 f"It is recommended to specify --remove_input_padding when using GPT attention plugin"
             )
 
+    if args.rotary_scaling is not None:
+        assert args.use_gpt_attention_plugin, "RoPE scaling is only supported through GPT attention plugin."
+        rotary_scaling = {
+            "type": args.rotary_scaling[0],
+            "factor": float(args.rotary_scaling[1])
+        }
+        assert rotary_scaling["type"] in ["linear", "dynamic", "qwen_dynamic"]
+        assert rotary_scaling["factor"] >= 1.0
+        args.rotary_scaling = rotary_scaling
+
+
     if args.use_inflight_batching:
         if not args.use_gpt_attention_plugin:
             args.use_gpt_attention_plugin = 'float16'

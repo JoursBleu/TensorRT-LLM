@@ -32,6 +32,15 @@ using namespace tensorrt_llm::kernels;
 using tensorrt_llm::plugins::GPTAttentionPluginCreator;
 using tensorrt_llm::plugins::GPTAttentionPlugin;
 
+inline float ntk_update_rotary_base(
+    const int max_positions,const int dim, const float base, const int true_seq_len) {
+    float ntk_alpha = std::pow(2.,
+        std::ceil(std::log2f(true_seq_len * 1. / max_positions) + 1.)) - 1.;
+    ntk_alpha = ntk_alpha > 1. ? ntk_alpha : 1.;
+    const float p = static_cast<float>(dim) / (dim - 2);
+    return base * pow(ntk_alpha, p);
+}
+
 static const char* GPT_ATTENTION_PLUGIN_VERSION{"1"};
 static const char* GPT_ATTENTION_PLUGIN_NAME{"GPTAttention"};
 
@@ -236,6 +245,7 @@ int GPTAttentionPlugin::enqueueImpl(const nvinfer1::PluginTensorDesc* inputDesc,
             ? static_cast<int32_t const*>(inputs[getIdx(IdxEntry::HOST_CONTEXT_LENGTH)])[seqIdx]
             : inputDesc[getIdx(IdxEntry::QKV_TENSOR)].dims.d[1];
     }
+
     for (int32_t seqIdx = nbContextRequests; seqIdx < nbSeq; seqIdx++)
     {
         TLLM_CHECK(reqTypes[seqIdx] == RequestType::kGENERATION);
@@ -472,6 +482,14 @@ int GPTAttentionPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
     const nvinfer1::PluginTensorDesc* outputDesc, const void* const* inputs, void* const* outputs, void* workspace,
     cudaStream_t stream) noexcept
 {
+    if (mRotaryEmbeddingScaleType == RotaryScalingType::kQWENDYNAMIC
+        && !mUpdatedBase) {
+        mRotaryEmbeddingBase = ntk_update_rotary_base(mRotaryEmbeddingMaxPositions,
+            mRotaryEmbeddingDim, mRotaryEmbeddingBase,
+            static_cast<int32_t const*>(inputs[getIdx(IdxEntry::HOST_CONTEXT_LENGTH)])[0]);
+        mRotaryEmbeddingScale = 1.0;
+        mUpdatedBase = true;
+    }
     if (mType == nvinfer1::DataType::kHALF)
     {
         return enqueueDispatchKVCacheType<half>(inputDesc, outputDesc, inputs, outputs, workspace, stream);

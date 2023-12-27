@@ -98,11 +98,18 @@ class QWenAttention(Module):
         self.rotary_embedding_scale_type = RotaryScalingType.none
         self.rotary_embedding_scale = 1.0
         if rotary_embedding_scaling is not None:
-            assert rotary_embedding_scaling["type"] in ["linear", "dynamic"]
-            self.rotary_embedding_scale_type = RotaryScalingType.linear if rotary_embedding_scaling[
-                "type"] == "linear" else RotaryScalingType.dynamic
+            assert rotary_embedding_scaling["type"] in ["linear", "dynamic", "qwen_dynamic"]
+            self.rotary_embedding_scale_type = RotaryScalingType.linear
+            if rotary_embedding_scaling["type"] == "linear":
+                self.rotary_embedding_scale_type = RotaryScalingType.linear
+                assert self.rotary_embedding_scale > 1.0
+            elif rotary_embedding_scaling["type"] == "dynamic":
+                self.rotary_embedding_scale_type = RotaryScalingType.dynamic
+                assert self.rotary_embedding_scale > 1.0
+            elif rotary_embedding_scaling["type"] == "qwen_dynamic":
+                self.rotary_embedding_scale_type = RotaryScalingType.qwen_dynamic
+                assert self.rotary_embedding_scale == 1.0
             self.rotary_embedding_scale = rotary_embedding_scaling["factor"]
-            assert self.rotary_embedding_scale > 1.0
         self.rotary_embedding_dim = 0
         self.neox_rotary_style = neox_rotary_style
         if self.position_embedding_type == PositionEmbeddingType.rope_gpt_neox:
@@ -199,8 +206,9 @@ class QWenAttention(Module):
             q_scaling=self.q_scaling,
             rotary_embedding_dim=self.
             rotary_embedding_dim,  # when we use it 0, we will not use rotary embedding in plugin
-            rotary_embedding_scale_type=self.neox_rotary_style,
-            rotary_embedding_max_positions=self.max_position_embeddings,
+            rotary_embedding_scale_type=self.rotary_embedding_scale_type,
+            rotary_embedding_scale=self.rotary_embedding_scale,
+            rotary_embedding_max_positions=self.seq_length,
             position_embedding_type=PositionEmbeddingType.rope_gpt_neox,
             kv_orig_quant_scale=kv_orig_quant_scale,
             kv_quant_orig_scale=kv_quant_orig_scale,

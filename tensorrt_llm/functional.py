@@ -591,6 +591,7 @@ class RotaryScalingType(IntEnum):
     none = 0
     linear = 1
     dynamic = 2
+    qwen_dynamic = 3
 
 
 class PositionEmbeddingType(IntEnum):

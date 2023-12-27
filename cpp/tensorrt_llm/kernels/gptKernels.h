@@ -54,6 +54,7 @@ enum class RotaryScalingType : int8_t
     kNONE = 0,
     kLINEAR = 1,
     kDYNAMIC = 2,
+    kQWENDYNAMIC = 3,
 };
 
 template <typename AttentionMaskDataType>

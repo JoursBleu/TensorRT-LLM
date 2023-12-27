@@ -24,6 +24,7 @@
 #include "tensorrt_llm/kernels/gptKernels.h"
 #include "tensorrt_llm/plugins/common/plugin.h"
 #include <cassert>
+#include <cmath>
 #include <set>
 #include <string>
 #include <vector>
@@ -204,6 +205,7 @@ protected:
     float mQScaling;
     int mRotaryEmbeddingDim;
     float mRotaryEmbeddingBase;
+    bool mUpdatedBase = false;
     tensorrt_llm::kernels::RotaryScalingType mRotaryEmbeddingScaleType;
     float mRotaryEmbeddingScale;
     int mRotaryEmbeddingMaxPositions;
